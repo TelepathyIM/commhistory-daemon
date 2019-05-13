@@ -66,7 +66,7 @@ systemctl-user --user daemon-reload || :
 
 %build
 unset LD_AS_NEEDED
-%qtc_qmake5
+%qtc_qmake5 CONFIG+=debug
 %qtc_make %{?_smp_mflags}
 
 %install
