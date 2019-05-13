@@ -420,6 +420,18 @@ bool ReceivedMessage::isScrollback() const
     return mPriv->getBoolean(0, "scrollback", false);
 }
 
+/**
+ * Return whether the incoming message should trigger a user notification.
+ *
+ * If \c true, UI should not notify the user about this message.
+ *
+ * \return \c true if the silent flag is set, \c false otherwise.
+ */
+bool ReceivedMessage::isSilent() const
+{
+    return mPriv->getBoolean(0, "silent", false);
+}
+
 void ReceivedMessage::ut_setSender(const ContactPtr& sender)
 {
     mPriv->sender = sender;

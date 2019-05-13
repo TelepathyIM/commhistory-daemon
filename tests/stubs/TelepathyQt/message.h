@@ -96,6 +96,7 @@ public:
     QDateTime received() const;
     ContactPtr sender() const;
     bool isScrollback() const;
+    bool isSilent() const;
 
 public: //ut
     void ut_setSender(const ContactPtr& sender);
