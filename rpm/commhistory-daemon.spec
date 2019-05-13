@@ -54,6 +54,13 @@ Translation source for %{name}
 %description
 Daemon for logging communications (IM, SMS and call) in history database.
 
+%post
+systemctl-user --user daemon-reload || :
+systemctl-user --user reload-or-try-restart commhistoryd || :
+
+%postun
+systemctl-user --user daemon-reload || :
+
 %prep
 %setup -q -n %{name}-%{version}
 
