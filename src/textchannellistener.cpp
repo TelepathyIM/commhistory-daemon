@@ -1203,6 +1203,10 @@ void TextChannelListener::handleReceivedMessage(const Tp::ReceivedMessage &messa
         event.setDirection(CommHistory::Event::Inbound);
     }
 
+    int deliveryStatus = message.header().value(DELIVERY_STATUS).variant().toInt();
+    if (deliveryStatus == Tp::DeliveryStatusRead)
+        event.setIsRead(true);
+
     QDateTime receivedTime;
     if (message.received().isValid())
         receivedTime = message.received();
