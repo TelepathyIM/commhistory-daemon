@@ -1604,110 +1604,111 @@ void TextChannelListener::channelReady()
 {
     DEBUG() << Q_FUNC_INFO;
 
-    if (m_Channel && m_Connection) {
-        if (m_Channel->targetHandleType() == Tp::HandleTypeRoom) {
-            DEBUG() << Q_FUNC_INFO << "group chat: HandleTypeRoom";
-            m_IsGroupChat = true;
-            m_GroupHandleType = Tp::HandleTypeRoom;
-        } else if (m_Channel->targetHandleType() == Tp::HandleTypeNone
-                   && m_Channel->interfaces().contains(
-                       TP_QT_IFACE_CHANNEL_INTERFACE_GROUP)) {
-            m_IsGroupChat = true;
-            m_GroupHandleType = Tp::HandleTypeNone;
-            m_PersistentId = m_Channel->immutableProperties().value(
-                TELEPATHY_CHANNEL_INTERFACE_PERSISTENT_ID).toString();
-            DEBUG() << Q_FUNC_INFO << "group chat: HandleTypeNone, PersistentId ="
-                     << m_PersistentId;
-
-            if (m_PersistentId.isEmpty()) {
-                qCritical() << Q_FUNC_INFO << "No persistent id for Tp::HandleTypeNone groupchat";
-                return;
-            }
-        }
-
-        if (m_Channel->interfaces().contains(TP_QT_IFACE_CHANNEL_INTERFACE_GROUP))
-            connect(m_Channel.data(),
-                    SIGNAL(groupMembersChanged(const Tp::Contacts &,
-                                               const Tp::Contacts &,
-                                               const Tp::Contacts &,
-                                               const Tp::Contacts &,
-                                               const Tp::Channel::GroupMemberChangeDetails &)),
-                    this,
-                    SLOT(slotGroupMembersChanged(const Tp::Contacts &,
-                                                 const Tp::Contacts &,
-                                                 const Tp::Contacts &,
-                                                 const Tp::Contacts &,
-                                                 const Tp::Channel::GroupMemberChangeDetails &)));
-
-        // request contact for target id to track presence
-        Tp::ContactManagerPtr contactManager = m_Connection->contactManager();
-        if (contactManager->supportedFeatures().contains(Tp::Contact::FeatureSimplePresence)) {
-            Tp::UIntList handles;
-            handles << m_Channel->targetHandle();
-
-            Tp::Features features;
-            features << Tp::Contact::FeatureSimplePresence;
-            features << Tp::Contact::FeatureAlias;
-
-            Tp::PendingContacts* pendingContacts = contactManager->contactsForHandles(handles,
-                                                                                      features);
-            connect(pendingContacts,
-                    SIGNAL(finished(Tp::PendingOperation*)),
-                    this,
-                    SLOT(slotContactsReady(Tp::PendingOperation*)));
-
-            if (m_IsGroupChat) {
-                QList<Tp::ContactPtr> contactList;
-
-                foreach (Tp::ContactPtr contact, m_Channel->groupContacts()) {
-                    if (contact != m_Channel->groupSelfContact())
-                        contactList << contact;
-                }
-
-                if (!contactList.isEmpty()) {
-                    Tp::PendingContacts *pc = contactManager->upgradeContacts(contactList,
-                                                                              features);
-                    connect(pc, SIGNAL(finished(Tp::PendingOperation *)),
-                            this, SLOT(slotContactsReady(Tp::PendingOperation *)));
-                }
-
-                if (m_Channel->groupAreHandleOwnersAvailable()) {
-                    Tp::UIntList handleOwnerList;
-                    foreach (Tp::ContactPtr contact, contactList) {
-                        uint ownerHandle = m_Channel->groupHandleOwners().
-                            value(contact->handle().first());
-                        if (ownerHandle)
-                            handleOwnerList << ownerHandle;
-                    }
-
-                    if (!handleOwnerList.isEmpty()) {
-                        Tp::PendingContacts *owners =
-                            contactManager->contactsForHandles(handleOwnerList);
-                        connect(owners, SIGNAL(finished(Tp::PendingOperation *)),
-                                this, SLOT(slotHandleOwnersFetched(Tp::PendingOperation *)));
-                    }
-                }
-
-                connect(m_Channel.data(),
-                        SIGNAL(groupHandleOwnersChanged(const Tp::HandleOwnerMap &,
-                                                        const Tp::UIntList &,
-                                                        const Tp::UIntList &)),
-                        this,
-                        SLOT(slotHandleOwnersChanged(const Tp::HandleOwnerMap &,
-                                                     const Tp::UIntList &,
-                                                     const Tp::UIntList &)));
-            }
-        }
-        checkStoredMessagesIf();
-        connect(&eventModel(), SIGNAL(eventsCommitted(QList<CommHistory::Event>,bool)),
-                SLOT(slotEventsCommitted(QList<CommHistory::Event>,bool)),
-                (Qt::ConnectionType) (Qt::UniqueConnection | Qt::QueuedConnection));
-        // call this last as it may start handle pending messages
-        requestConversationId();
-    } else {
+    if (!m_Channel || !m_Connection) {
         qCritical() << Q_FUNC_INFO << "Invalid channel: " << m_Channel.data()
                     << " or connection " << m_Connection.data();
+        return;
     }
+
+    if (m_Channel->targetHandleType() == Tp::HandleTypeRoom) {
+        DEBUG() << Q_FUNC_INFO << "group chat: HandleTypeRoom";
+        m_IsGroupChat = true;
+        m_GroupHandleType = Tp::HandleTypeRoom;
+    } else if (m_Channel->targetHandleType() == Tp::HandleTypeNone
+               && m_Channel->interfaces().contains(
+                   TP_QT_IFACE_CHANNEL_INTERFACE_GROUP)) {
+        m_IsGroupChat = true;
+        m_GroupHandleType = Tp::HandleTypeNone;
+        m_PersistentId = m_Channel->immutableProperties().value(
+                    TELEPATHY_CHANNEL_INTERFACE_PERSISTENT_ID).toString();
+        DEBUG() << Q_FUNC_INFO << "group chat: HandleTypeNone, PersistentId ="
+                << m_PersistentId;
+
+        if (m_PersistentId.isEmpty()) {
+            qCritical() << Q_FUNC_INFO << "No persistent id for Tp::HandleTypeNone groupchat";
+            return;
+        }
+    }
+
+    if (m_Channel->interfaces().contains(TP_QT_IFACE_CHANNEL_INTERFACE_GROUP))
+        connect(m_Channel.data(),
+                SIGNAL(groupMembersChanged(const Tp::Contacts &,
+                                           const Tp::Contacts &,
+                                           const Tp::Contacts &,
+                                           const Tp::Contacts &,
+                                           const Tp::Channel::GroupMemberChangeDetails &)),
+                this,
+                SLOT(slotGroupMembersChanged(const Tp::Contacts &,
+                                             const Tp::Contacts &,
+                                             const Tp::Contacts &,
+                                             const Tp::Contacts &,
+                                             const Tp::Channel::GroupMemberChangeDetails &)));
+
+    // request contact for target id to track presence
+    Tp::ContactManagerPtr contactManager = m_Connection->contactManager();
+    if (contactManager->supportedFeatures().contains(Tp::Contact::FeatureSimplePresence)) {
+        Tp::UIntList handles;
+        handles << m_Channel->targetHandle();
+
+        Tp::Features features;
+        features << Tp::Contact::FeatureSimplePresence;
+        features << Tp::Contact::FeatureAlias;
+
+        Tp::PendingContacts* pendingContacts = contactManager->contactsForHandles(handles,
+                                                                                  features);
+        connect(pendingContacts,
+                SIGNAL(finished(Tp::PendingOperation*)),
+                this,
+                SLOT(slotContactsReady(Tp::PendingOperation*)));
+
+        if (m_IsGroupChat) {
+            QList<Tp::ContactPtr> contactList;
+
+            foreach (Tp::ContactPtr contact, m_Channel->groupContacts()) {
+                if (contact != m_Channel->groupSelfContact())
+                    contactList << contact;
+            }
+
+            if (!contactList.isEmpty()) {
+                Tp::PendingContacts *pc = contactManager->upgradeContacts(contactList,
+                                                                          features);
+                connect(pc, SIGNAL(finished(Tp::PendingOperation *)),
+                        this, SLOT(slotContactsReady(Tp::PendingOperation *)));
+            }
+
+            if (m_Channel->groupAreHandleOwnersAvailable()) {
+                Tp::UIntList handleOwnerList;
+                foreach (Tp::ContactPtr contact, contactList) {
+                    uint ownerHandle = m_Channel->groupHandleOwners().
+                            value(contact->handle().first());
+                    if (ownerHandle)
+                        handleOwnerList << ownerHandle;
+                }
+
+                if (!handleOwnerList.isEmpty()) {
+                    Tp::PendingContacts *owners =
+                            contactManager->contactsForHandles(handleOwnerList);
+                    connect(owners, SIGNAL(finished(Tp::PendingOperation *)),
+                            this, SLOT(slotHandleOwnersFetched(Tp::PendingOperation *)));
+                }
+            }
+
+            connect(m_Channel.data(),
+                    SIGNAL(groupHandleOwnersChanged(const Tp::HandleOwnerMap &,
+                                                    const Tp::UIntList &,
+                                                    const Tp::UIntList &)),
+                    this,
+                    SLOT(slotHandleOwnersChanged(const Tp::HandleOwnerMap &,
+                                                 const Tp::UIntList &,
+                                                 const Tp::UIntList &)));
+        }
+    }
+    checkStoredMessagesIf();
+    connect(&eventModel(), SIGNAL(eventsCommitted(QList<CommHistory::Event>,bool)),
+            SLOT(slotEventsCommitted(QList<CommHistory::Event>,bool)),
+            (Qt::ConnectionType) (Qt::UniqueConnection | Qt::QueuedConnection));
+    // call this last as it may start handle pending messages
+    requestConversationId();
 }
 
 void TextChannelListener::slotContactsReady(Tp::PendingOperation* operation)
