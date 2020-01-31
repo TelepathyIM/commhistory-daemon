@@ -22,6 +22,7 @@
 
 #include "mmshandler.h"
 #include "constants.h"
+#include "eventsmonitor.h"
 #include "notificationmanager.h"
 #include "debug.h"
 #include <CommHistory/databaseio.h>
@@ -31,7 +32,6 @@
 #include <CommHistory/groupmanager.h>
 #include <CommHistory/constants.h>
 #include <CommHistory/mmsconstants.h>
-#include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDBusPendingCall>
 #include <QDBusPendingCallWatcher>
@@ -78,7 +78,7 @@ class MmsHandlerModem
     QOfonoConnectionManager *connection;
 };
 
-MmsHandler::MmsHandler(QObject* parent)
+MmsHandler::MmsHandler(QObject* parent, EventsMonitor *eventsMonitor)
     : MessageHandlerBase(parent, MMS_HANDLER_PATH, MMS_HANDLER_SERVICE)
     , m_ofonoManager(QOfonoManager::instance())
     , m_ofonoExtModemManager(QOfonoExtModemManager::instance())
@@ -97,15 +97,8 @@ MmsHandler::MmsHandler(QObject* parent)
 
     connect(ofonoManager, SIGNAL(availableChanged(bool)), SLOT(onOfonoAvailableChanged(bool)));
 
-    QDBusConnection dbus(QDBusConnection::sessionBus());
-    if (!dbus.connect(QString(), COMM_HISTORY_OBJECT_PATH, COMM_HISTORY_INTERFACE,
-        EVENTS_UPDATED_SIGNAL, this, SLOT(onEventsUpdated(QList<CommHistory::Event>)))) {
-        qWarning() << "MmsHandler: failed to register" << EVENTS_UPDATED_SIGNAL << "handler";
-    }
-    if (!dbus.connect(QString(), COMM_HISTORY_OBJECT_PATH, COMM_HISTORY_INTERFACE,
-        GROUPS_UPDATED_FULL_SIGNAL, this, SLOT(onGroupsUpdatedFull(QList<CommHistory::Group>)))) {
-        qWarning() << "MmsHandler: failed to register" << GROUPS_UPDATED_FULL_SIGNAL << "handler";
-    }
+    connect(eventsMonitor, &EventsMonitor::eventsUpdated, this, &MmsHandler::onEventsUpdated);
+    connect(eventsMonitor, &EventsMonitor::groupsUpdatedFull, this, &MmsHandler::onGroupsUpdatedFull);
 }
 
 QDBusPendingCall MmsHandler::callEngine(const QString &method, const QVariantList &args)

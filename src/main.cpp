@@ -41,6 +41,7 @@
 #include "connectionutils.h"
 #include "lastdialedcache.h"
 #include "accountoperationsobserver.h"
+#include "eventsmonitor.h"
 #include "fscleanup.h"
 #include "mmshandler.h"
 #include "mmshandler_adaptor.h"
@@ -206,8 +207,9 @@ Q_DECL_EXPORT int main(int argc, char **argv)
 
     // Init account operations observer to monitor account removals and to react to them.
     new AccountOperationsObserver(utils->accountManager(), &app);
+    EventsMonitor *eventsMonitor = new EventsMonitor(&app);
 
-    new MmsHandlerAdaptor(new MmsHandler(&app));
+    new MmsHandlerAdaptor(new MmsHandler(&app, eventsMonitor));
     new SmartMessaging(&app);
     new FsCleanup(&app);
 

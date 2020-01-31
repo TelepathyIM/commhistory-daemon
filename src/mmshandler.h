@@ -36,6 +36,7 @@ namespace CommHistory {
 }
 
 class QDBusPendingCallWatcher;
+class EventsMonitor;
 class MDConfGroup;
 class MmsHandlerModem;
 
@@ -44,7 +45,7 @@ class MmsHandler : public MessageHandlerBase
     Q_OBJECT
 
 public:
-    explicit MmsHandler(QObject *parent);
+    explicit MmsHandler(QObject *parent, EventsMonitor *eventsMonitor);
 
 public Q_SLOTS:
     QString messageNotification(const QString &imsi, const QString &from, const QString &subject,
