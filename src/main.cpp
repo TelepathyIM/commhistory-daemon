@@ -44,6 +44,7 @@
 #include "eventsmonitor.h"
 #include "fscleanup.h"
 #include "mmshandler.h"
+#include "telepathyhandler.h"
 #include "mmshandler_adaptor.h"
 #include "smartmessaging.h"
 #include "debug.h"
@@ -212,6 +213,7 @@ Q_DECL_EXPORT int main(int argc, char **argv)
     new MmsHandlerAdaptor(new MmsHandler(&app, eventsMonitor));
     new SmartMessaging(&app);
     new FsCleanup(&app);
+    new TelepathyHandler(&app, eventsMonitor);
 
     int result = app.exec();
 
