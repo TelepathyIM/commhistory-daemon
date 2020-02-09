@@ -19,20 +19,70 @@
 
 #include "telepathyhandler.h"
 #include "eventsmonitor.h"
+#include "chatreadhandler.h"
 
-TelepathyHandler::TelepathyHandler(QObject *parent, EventsMonitor *eventsMonitor)
-    : QObject(parent)
+#include <TelepathyQt/PendingReady>
+
+#include <CommHistory/SingleEventModel>
+
+TelepathyHandler::TelepathyHandler(QObject *parent, Tp::AccountManagerPtr manager, EventsMonitor *eventsMonitor)
+    : QObject(parent),
+      m_accountManager(manager),
+      m_eventsMonitor(eventsMonitor)
 {
-    connect(eventsMonitor, &EventsMonitor::eventsUpdated, this, &TelepathyHandler::onEventsUpdated);
-    connect(eventsMonitor, &EventsMonitor::groupsUpdatedFull, this, &TelepathyHandler::onGroupsUpdatedFull);
+    if (m_accountManager.isNull()) {
+        qWarning() << "Account manager is null!";
+    } else {
+        if (!m_accountManager->isReady()) {
+            connect(m_accountManager->becomeReady(), &Tp::PendingReady::finished,
+                this, &TelepathyHandler::slotAccountManagerReady);
+        } else {
+            connectToAccounts();
+        }
+    }
 }
 
-void TelepathyHandler::onEventsUpdated(const QList<CommHistory::Event> &events)
+void TelepathyHandler::slotAccountManagerReady(Tp::PendingOperation *op)
 {
-    Q_UNUSED(events);
+    if (op->isError()) {
+        qWarning() << "Account manager cannot become ready:" << op->errorName() << "-" << op->errorMessage();
+        return;
+    }
+
+    connectToAccounts();
 }
 
-void TelepathyHandler::onGroupsUpdatedFull(const QList<CommHistory::Group> &groups)
+void TelepathyHandler::slotConnectToSignals(const Tp::AccountPtr &account)
 {
-    Q_UNUSED(groups);
+    if (!account.isNull() && !m_handlers.contains(account.data())) {
+        auto chatReadHandler = new ChatReadHandler(this, account, m_eventsMonitor);
+        m_handlers.insert(account.data(), chatReadHandler);
+
+        connect(account.data(), &Tp::Account::removed, this,
+            &TelepathyHandler::slotAccountRemoved, Qt::UniqueConnection);
+    }
+}
+
+void TelepathyHandler::slotAccountRemoved()
+{
+    Tp::Account* account = qobject_cast<Tp::Account*>(sender());
+    if (!account) {
+        qWarning() << Q_FUNC_INFO << "Account is null";
+        return;
+    }
+
+    if (m_handlers.contains(account)) {
+        m_handlers[account]->deleteLater();
+        m_handlers.remove(account);
+    }
+}
+
+void TelepathyHandler::connectToAccounts()
+{
+    connect(m_accountManager.data(), &Tp::AccountManager::newAccount,
+        this, &TelepathyHandler::slotConnectToSignals, Qt::UniqueConnection);
+
+    foreach(const Tp::AccountPtr &account, m_accountManager->allAccounts()) {
+        slotConnectToSignals(account);
+    }
 }

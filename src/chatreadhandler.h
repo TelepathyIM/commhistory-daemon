@@ -17,38 +17,31 @@
 **
 ******************************************************************************/
 
-#ifndef TELEPATHYHANDLER_H
-#define TELEPATHYHANDLER_H
+#ifndef CHATREADHANDLER_H
+#define CHATREADHANDLER_H
 
 #include <QObject>
-#include <QHash>
 
-#include <TelepathyQt/AccountManager>
 #include <TelepathyQt/Account>
-#include <TelepathyQt/PendingOperation>
+
+#include <CommHistory/event.h>
+#include <CommHistory/group.h>
 
 class EventsMonitor;
-class ChatReadHandler;
 
-class TelepathyHandler : public QObject
+class ChatReadHandler : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit TelepathyHandler(QObject *parent, Tp::AccountManagerPtr manager, EventsMonitor *eventsMonitor);
+    explicit ChatReadHandler(QObject *parent, Tp::AccountPtr account, EventsMonitor *eventsMonitor);
 
 private Q_SLOTS:
-    void slotAccountManagerReady(Tp::PendingOperation *op);
-    void slotConnectToSignals(const Tp::AccountPtr &account);
-    void slotAccountRemoved();
+    void onEventsUpdated(const QList<CommHistory::Event> &events);
+    void onGroupsUpdatedFull(const QList<CommHistory::Group> &groups);
 
 private:
-    void connectToAccounts();
-
-private:
-    Tp::AccountManagerPtr m_accountManager;
-    EventsMonitor* m_eventsMonitor;
-    QHash<Tp::Account*, ChatReadHandler*> m_handlers;
+    Tp::AccountPtr m_account;
 };
 
-#endif // TELEPATHYHANDLER_H
+#endif // CHATREADHANDLER_H

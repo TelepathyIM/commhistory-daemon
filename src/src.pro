@@ -65,6 +65,7 @@ HEADERS += logger.h \
            locstrings.h \
            messagereviver.h \
            telepathyhandler.h \
+           chatreadhandler.h \
            connectionutils.h \
            contactauthorizationlistener.h \
            contactauthorizer.h \
@@ -95,6 +96,7 @@ SOURCES += main.cpp \
            commhistoryservice.cpp \
            messagereviver.cpp \
            telepathyhandler.cpp \
+           chatreadhandler.cpp \
            connectionutils.cpp \
            contactauthorizationlistener.cpp \
            contactauthorizer.cpp \

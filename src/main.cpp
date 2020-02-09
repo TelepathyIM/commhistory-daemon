@@ -213,7 +213,7 @@ Q_DECL_EXPORT int main(int argc, char **argv)
     new MmsHandlerAdaptor(new MmsHandler(&app, eventsMonitor));
     new SmartMessaging(&app);
     new FsCleanup(&app);
-    new TelepathyHandler(&app, eventsMonitor);
+    new TelepathyHandler(&app, utils->accountManager(), eventsMonitor);
 
     int result = app.exec();
 
